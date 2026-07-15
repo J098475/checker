@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "name": "Bloomberg Canada - News & Media",
+      "url": "https://bloomberg.avature.net/careers/SearchJobs/canada?2562=%5B219307%5D&2562_format=6594&listFilterMode=1&jobRecordsPerPage=100&",
+      "selectors": {
+        "job_container": "article.article--result",
+        "title": "h3.article__header__text__title a.link",
+        "link": "h3.article__header__text__title a.link",
+        "location": "span.list-item-location"
+      }
+    }
+  ]
+}

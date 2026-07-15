@@ -1,0 +1,51 @@
+name: Scrape and Email Job Listings
+
+on:
+  schedule:
+    # Run once daily at 12:00 PM UTC
+    - cron: '0 12 * * *'
+  workflow_dispatch: # Enable manual run from GitHub Actions UI
+
+permissions:
+  contents: write # Needed to commit and push changes back to the repository
+
+jobs:
+  scrape_and_notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Job Scraper
+        env:
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          GMAIL_RECEIVER: ${{ secrets.GMAIL_RECEIVER }}
+        run: python scraper.py
+
+      - name: Commit and Push Seen Jobs Database
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Check if seen_jobs.json has changed
+          if git status --porcelain seen_jobs.json | grep -q "seen_jobs.json"; then
+            echo "Changes detected in seen_jobs.json. Committing and pushing..."
+            git add seen_jobs.json
+            git commit -m "chore: auto-update seen jobs database [skip ci]"
+            git push
+          else
+            echo "No changes in seen_jobs.json."
+          fi
