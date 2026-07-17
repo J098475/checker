@@ -24,6 +24,21 @@
         "data-office": "international"
       },
       "keywords": ["Canada", "Toronto", "Ontario", "Canadian"]
+    },
+    {
+      "name": "Reuters - News & Editorial (Toronto)",
+      "type": "workday",
+      "url": "https://thomsonreuters.wd5.myworkdayjobs.com/wday/cxs/thomsonreuters/External_Career_Site/jobs",
+      "web_url": "https://thomsonreuters.wd5.myworkdayjobs.com/en-US/External_Career_Site",
+      "payload": {
+        "appliedFacets": {
+          "locationHierarchy2": ["27f8415bd8ee4f6580d12804c6427bbf"],
+          "CF_Job_Posting_Anchor_Job_Category_EEB_Extended": ["9276a62d4e68100204e60ceedade0001"]
+        },
+        "limit": 20,
+        "offset": 0,
+        "searchText": ""
+      }
     }
   ]
 }

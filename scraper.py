@@ -33,7 +33,7 @@ def save_seen_jobs(seen_jobs):
     with open(SEEN_JOBS_PATH, 'w') as f:
         json.dump(seen_jobs, f, indent=2)
 
-def scrape_source(source):
+def scrape_html(source):
     name = source.get('name', 'Unknown Source')
     url = source.get('url')
     selectors = source.get('selectors', {})
@@ -41,10 +41,10 @@ def scrape_source(source):
     keywords = source.get('keywords', [])
     
     if not url:
-        print(f"Warning: No URL specified for source '{name}'. Skipping.")
+        print(f"Warning: No URL specified for HTML source '{name}'. Skipping.")
         return []
     
-    print(f"Scraping '{name}' from {url}...")
+    print(f"Scraping HTML source '{name}' from {url}...")
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -88,7 +88,6 @@ def scrape_source(source):
         title = title_el.text.strip() if title_el else "Unknown Title"
         
         # Extract link
-        # If the selector is the anchor itself (e.g. 'a'), it could be the container element or child
         if link_sel == 'a' and container.name == 'a':
             link_el = container
         else:
@@ -117,6 +116,73 @@ def scrape_source(source):
             
     print(f"Matched {len(jobs)} job(s) after applying filters and keywords.")
     return jobs
+
+def scrape_workday(source):
+    name = source.get('name', 'Unknown Source')
+    url = source.get('url')
+    web_url = source.get('web_url')
+    payload = source.get('payload', {})
+    keywords = source.get('keywords', [])
+    
+    if not url or not web_url:
+        print(f"Warning: Missing url or web_url for Workday source '{name}'. Skipping.")
+        return []
+        
+    print(f"Scraping Workday source '{name}' from {url}...")
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        print(f"Error fetching API for Workday source '{name}': {e}")
+        return []
+        
+    job_postings = data.get('jobPostings', [])
+    print(f"Found {len(job_postings)} total job listing(s) in API response.")
+    
+    jobs = []
+    base_web_url = web_url if web_url.endswith('/') else web_url + '/'
+    
+    for job_data in job_postings:
+        title = job_data.get('title', 'Unknown Title')
+        
+        external_path = job_data.get('externalPath', '').lstrip('/')
+        link = urllib.parse.urljoin(base_web_url, external_path) if external_path else ""
+        
+        # Location is usually in bulletFields
+        bullet_fields = job_data.get('bulletFields', [])
+        location = ", ".join(bullet_fields) if bullet_fields else "Unknown Location"
+        
+        # Apply keyword matching if keywords list is provided
+        if keywords:
+            search_text = f"{title} {location}".lower()
+            if not any(k.lower() in search_text for k in keywords):
+                continue
+                
+        if link:
+            jobs.append({
+                'title': title,
+                'link': link,
+                'location': location,
+                'source': name
+            })
+            
+    print(f"Matched {len(jobs)} job(s) after applying filters and keywords.")
+    return jobs
+
+def scrape_source(source):
+    source_type = source.get('type', 'html')
+    if source_type == 'workday':
+        return scrape_workday(source)
+    else:
+        return scrape_html(source)
 
 def format_email_body(new_jobs):
     job_cards_html = ""
