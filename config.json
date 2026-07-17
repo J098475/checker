@@ -9,6 +9,21 @@
         "link": "h3.article__header__text__title a.link",
         "location": "span.list-item-location"
       }
+    },
+    {
+      "name": "New York Times - Journalism (International)",
+      "url": "https://www.nytco.com/careers/job-listings/?department=journalism&office=international",
+      "selectors": {
+        "job_container": "div.press-post",
+        "title": "h2.text-h5",
+        "link": "a",
+        "location": "span"
+      },
+      "filters": {
+        "data-department": "journalism",
+        "data-office": "international"
+      },
+      "keywords": ["Canada", "Toronto", "Ontario", "Canadian"]
     }
   ]
 }

@@ -37,6 +37,8 @@ def scrape_source(source):
     name = source.get('name', 'Unknown Source')
     url = source.get('url')
     selectors = source.get('selectors', {})
+    filters = source.get('filters', {})
+    keywords = source.get('keywords', [])
     
     if not url:
         print(f"Warning: No URL specified for source '{name}'. Skipping.")
@@ -67,16 +69,31 @@ def scrape_source(source):
         return []
         
     containers = soup.select(job_container_sel)
-    print(f"Found {len(containers)} job listings container(s) on the page.")
+    print(f"Found {len(containers)} total job listing container(s) on the page.")
     
     jobs = []
     for container in containers:
+        # Apply HTML attribute filters if present (e.g. data-department, data-office)
+        if filters:
+            matched_filters = True
+            for attr, val in filters.items():
+                if container.get(attr) != val:
+                    matched_filters = False
+                    break
+            if not matched_filters:
+                continue
+
         # Extract title
         title_el = container.select_one(title_sel) if title_sel else None
         title = title_el.text.strip() if title_el else "Unknown Title"
         
         # Extract link
-        link_el = container.select_one(link_sel) if link_sel else None
+        # If the selector is the anchor itself (e.g. 'a'), it could be the container element or child
+        if link_sel == 'a' and container.name == 'a':
+            link_el = container
+        else:
+            link_el = container.select_one(link_sel) if link_sel else None
+            
         href = link_el.get('href') if link_el else None
         link = urllib.parse.urljoin(url, href) if href else ""
         
@@ -84,7 +101,12 @@ def scrape_source(source):
         location_el = container.select_one(location_sel) if location_sel else None
         location = location_el.text.strip() if location_el else "Unknown Location"
         
-        # We need a unique identifier. The job detail link is usually perfect.
+        # Apply keyword matching if keywords list is provided
+        if keywords:
+            search_text = f"{title} {location}".lower()
+            if not any(k.lower() in search_text for k in keywords):
+                continue
+
         if link:
             jobs.append({
                 'title': title,
@@ -93,10 +115,10 @@ def scrape_source(source):
                 'source': name
             })
             
+    print(f"Matched {len(jobs)} job(s) after applying filters and keywords.")
     return jobs
 
 def format_email_body(new_jobs):
-    # Aesthetically rich, clean HTML template
     job_cards_html = ""
     for job in new_jobs:
         job_cards_html += f"""
@@ -203,7 +225,7 @@ def main():
         jobs = scrape_source(source)
         all_scraped_jobs.extend(jobs)
         
-    print(f"Scraped a total of {len(all_scraped_jobs)} job listing(s).")
+    print(f"Scraped a total of {len(all_scraped_jobs)} job listing(s) matching initial criteria.")
     
     new_jobs = []
     for job in all_scraped_jobs:
@@ -217,13 +239,10 @@ def main():
         
     print(f"Found {len(new_jobs)} new job posting(s)!")
     
-    # Attempt to send email (returns True on success or falls back to Dry Run console log)
+    # Attempt to send email
     email_sent = send_email(new_jobs)
     
-    # If the email was successfully sent (or if we are testing locally without credentials and want to record them anyway)
-    # Note: In production Actions, we want to only update state if email succeeded, but for dry-runs/local testing we can choose.
-    # We will update seen_jobs if email is sent OR if we are running a manual dry run.
-    is_dry_run = not (sender := os.environ.get('GMAIL_SENDER')) or not os.environ.get('GMAIL_PASSWORD')
+    is_dry_run = not os.environ.get('GMAIL_SENDER') or not os.environ.get('GMAIL_PASSWORD')
     
     if email_sent or is_dry_run:
         # Mark jobs as seen
