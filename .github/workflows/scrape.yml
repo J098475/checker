@@ -2,8 +2,8 @@ name: Scrape and Email Job Listings
 
 on:
   schedule:
-    # Run once daily at 12:00 PM UTC
-    - cron: '0 12 * * *'
+    # Run once daily at 11:00 AM Eastern (15:00 UTC)
+    - cron: '0 15 * * *'
   workflow_dispatch: # Enable manual run from GitHub Actions UI
 
 permissions:
